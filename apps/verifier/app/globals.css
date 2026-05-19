@@ -1,0 +1,19 @@
+body {
+  margin: 0;
+  background: #0f0b07;
+  color: #f5eee4;
+  font-family: "IBM Plex Sans", "Aptos", sans-serif;
+}
+
+.shell-page {
+  min-height: 100vh;
+  padding: 48px;
+}
+
+.eyebrow {
+  color: #f6a04d;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}

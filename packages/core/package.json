@@ -1,0 +1,13 @@
+{
+  "name": "@paperedge/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./calc": "./src/calc.ts",
+    "./status": "./src/status.ts",
+    "./trade-metrics": "./src/trade-metrics.ts",
+    "./dashboard-series": "./src/dashboard-series.ts"
+  }
+}

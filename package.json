@@ -2,9 +2,15 @@
   "name": "paperedge",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:dashboard": "npm --workspace @paperedge/dashboard run build",
+    "build:verifier": "npm --workspace @paperedge/verifier run build",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
