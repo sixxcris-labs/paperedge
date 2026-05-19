@@ -18,6 +18,7 @@ model User {
   bonuses       Bonus[]
   settings      UserSettings?
   bankrollSnaps BankrollSnapshot[]
+  opportunities TradeOpportunity[]
 }
 
 model UserSettings {
@@ -48,6 +49,8 @@ model Book {
   legs              TradeLeg[]
   bonuses           Bonus[]
   deepLinks         BookDeepLink[]
+  opportunitiesAsA  TradeOpportunity[] @relation("OpportunityBookA")
+  opportunitiesAsB  TradeOpportunity[] @relation("OpportunityBookB")
 }
 
 model BookDeepLink {
@@ -111,6 +114,101 @@ model PaperTrade {
   result               Result?
   mistakes             TradeMistake[]
   overrides            ChecklistOverride[]
+  lockedFromOpportunity TradeOpportunity?  @relation("OpportunityLock")
+}
+
+model TradeOpportunity {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id])
+
+  // Lifecycle — see ADR-001 for the full status vocabulary.
+  status               String   @default("imported")
+  source               String   @default("oddsjam_paste")
+
+  rawEntryText         String?
+  importedAt           DateTime @default(now())
+  verifiedAt           DateTime?
+  lockedAt             DateTime?
+  skippedAt            DateTime?
+  failedAt             DateTime?
+  failureReason        String?
+  notes                String?
+
+  // Link to the locked PaperTrade once promoted. Null until lock.
+  lockedTradeId        String?     @unique
+  lockedTrade          PaperTrade? @relation("OpportunityLock", fields: [lockedTradeId], references: [id])
+
+  // Market identity
+  tradeType            String   @default("cash_arbitrage")
+  event                String
+  startTime            DateTime?
+  sport                String   @default("unknown")
+  league               String?
+  market               String   @default("moneyline")
+  playerOrTeam         String?
+  period               String   @default("full_game")
+
+  // Book A — expected (from import) and observed (from verifier)
+  bookAId              String?
+  bookA                Book?    @relation("OpportunityBookA", fields: [bookAId], references: [id])
+  sideA                String?
+  oddsA                Int?
+  lineA                Float?
+  stakeA               Float?
+  liquidityA           Float?
+  verifiedOddsA        Int?
+  verifiedLineA        Float?
+  verifiedLiquidityA   Float?
+  bookANotes           String?
+  bookAVerified        Boolean  @default(false)
+
+  // Book B
+  bookBId              String?
+  bookB                Book?    @relation("OpportunityBookB", fields: [bookBId], references: [id])
+  sideB                String?
+  oddsB                Int?
+  lineB                Float?
+  stakeB               Float?
+  liquidityB           Float?
+  verifiedOddsB        Int?
+  verifiedLineB        Float?
+  verifiedLiquidityB   Float?
+  bookBNotes           String?
+  bookBVerified        Boolean  @default(false)
+
+  // Market-match checks
+  sameEventConfirmed         Boolean @default(false)
+  sameMarketConfirmed        Boolean @default(false)
+  samePlayerOrTeamConfirmed  Boolean @default(false)
+  samePeriodConfirmed        Boolean @default(false)
+  sameLineConfirmed          Boolean @default(false)
+  oppositeSidesConfirmed     Boolean @default(false)
+  oddsAcceptedConfirmed      Boolean @default(false)
+  stakeAcceptedConfirmed     Boolean @default(false)
+  liquidityEnoughConfirmed   Boolean @default(false)
+  recalculatedConfirmed      Boolean @default(false)
+  userFinalConfirm           Boolean @default(false)
+
+  // Computed at import + refined post-verification
+  totalExposure        Float?
+  profitIfAWins        Float?
+  profitIfBWins        Float?
+  expectedProfitMin    Float?
+  expectedProfitMax    Float?
+
+  // Middle-trade specifics (null for non-middles)
+  middleDistance       Float?
+  middleNumber         Float?
+  middleRange          String?
+  outsideLoss          Float?
+  middleProfit         Float?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, importedAt])
 }
 
 model TradeLeg {
