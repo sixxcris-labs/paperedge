@@ -1,0 +1,52 @@
+import { db } from "@/lib/db";
+import { SettlementClient } from "./SettlementClient";
+
+const LOCAL_USER_EMAIL = "local@paperedge.app";
+export const dynamic = "force-dynamic";
+
+export default async function SettlementPage() {
+  const user = await db.user.findUniqueOrThrow({ where: { email: LOCAL_USER_EMAIL } });
+
+  const candidates = await db.paperTrade.findMany({
+    where: {
+      userId: user.id,
+      status: {
+        in: [
+          // manual-entry statuses
+          "pending_verification", "locked_paper_trade", "locked_paper_trade_upgraded",
+          // wizard statuses
+          "paper_traded", "pending_result", "locked", "needs", "verified", "ready",
+        ],
+      },
+    },
+    include: { legs: { include: { book: true } }, result: true },
+    orderBy: { tradeDate: "desc" },
+  });
+
+  const rows = candidates.map((t) => {
+    const legA = t.legs.find((l) => l.legLabel === "A");
+    const legB = t.legs.find((l) => l.legLabel === "B");
+    return {
+      id: t.id,
+      customTradeId: t.customTradeId,
+      sport: t.sport ?? "other",
+      eventName: t.eventName,
+      marketType: t.marketType ?? "",
+      player: t.player ?? "",
+      time: t.tradeDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+      date: t.tradeDate.toISOString().slice(0, 10),
+      status: t.status,
+      expectedProfit: t.worstCasePL ?? t.expectedProfitIfA ?? 0,
+      bookA: legA?.book.name ?? "—",
+      sideA: legA?.side ?? "",
+      oddsA: legA?.oddsAmerican ?? 0,
+      stakeA: legA?.stake ?? 0,
+      bookB: legB?.book.name ?? "—",
+      sideB: legB?.side ?? "",
+      oddsB: legB?.oddsAmerican ?? 0,
+      stakeB: legB?.stake ?? 0,
+    };
+  });
+
+  return <SettlementClient candidates={rows} />;
+}
