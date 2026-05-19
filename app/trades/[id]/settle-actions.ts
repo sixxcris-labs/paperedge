@@ -3,15 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { STATUS, isSettled } from "@/lib/status";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
 
 /** Statuses that cannot be re-settled or mutated. */
-const LOCKED_STATUSES = new Set([
-  "settled_win", "settled_loss", "settled_push_void",
-  "settled_won", "settled_lost", "settled_push", "settled_partial",
-  "cancelled",
-]);
+const isLocked = (status: string) => isSettled(status) || status === STATUS.cancelled;
 
 const SettleSchema = z.object({
   winningSide: z.string(),
@@ -35,7 +32,7 @@ export async function settleTrade(tradeId: string, formData: FormData) {
 
   if (!trade) throw new Error("Trade not found");
   if (trade.userId !== user.id) throw new Error("Unauthorised");
-  if (LOCKED_STATUSES.has(trade.status)) {
+  if (isLocked(trade.status)) {
     throw new Error("This trade is already settled and cannot be changed.");
   }
 
@@ -122,7 +119,7 @@ export async function settleTrade(tradeId: string, formData: FormData) {
 export async function updateTradeStatus(tradeId: string, status: string) {
   // Prevent mutating already-settled trades through this shortcut.
   const trade = await db.paperTrade.findUnique({ where: { id: tradeId } });
-  if (trade && LOCKED_STATUSES.has(trade.status)) {
+  if (trade && isLocked(trade.status)) {
     throw new Error("Cannot change status of a settled trade.");
   }
   await db.paperTrade.update({ where: { id: tradeId }, data: { status } });

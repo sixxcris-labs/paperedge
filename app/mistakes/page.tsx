@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { fmtUSD } from "@/lib/fmt";
 import { KPI } from "@/components/ui/design";
+import { STATUS } from "@/lib/status";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export default async function MistakesPage() {
   // Mistake trades (canonical status is `mistake_invalid`; `mistake` is the
   // legacy alias still read defensively elsewhere but never written).
   const mistakeTrades = await db.paperTrade.findMany({
-    where: { userId: user.id, status: { in: ["mistake_invalid", "mistake"] } },
+    where: { userId: user.id, status: { in: [STATUS.mistake_invalid, STATUS.mistake] } },
     include: { result: true, mistakes: { include: { mistakeTag: true } } },
     orderBy: { tradeDate: "desc" },
   });

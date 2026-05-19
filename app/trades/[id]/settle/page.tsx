@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { STATUS, isSettled } from "@/lib/status";
 import { SettleClient } from "./SettleClient";
 
 interface Props {
@@ -9,11 +10,7 @@ interface Props {
 
 export const dynamic = "force-dynamic";
 
-const LOCKED_STATUSES = new Set([
-  "settled_win", "settled_loss", "settled_push_void",
-  "settled_won", "settled_lost", "settled_push", "settled_partial",
-  "cancelled",
-]);
+const isLocked = (status: string) => isSettled(status) || status === STATUS.cancelled;
 
 export default async function SettlePage({ params }: Props) {
   const { id } = await params;
@@ -27,7 +24,7 @@ export default async function SettlePage({ params }: Props) {
   });
 
   if (!trade) notFound();
-  if (LOCKED_STATUSES.has(trade.status)) redirect(`/trades/${id}`);
+  if (isLocked(trade.status)) redirect(`/trades/${id}`);
 
   const mistageTags = await db.mistakeTag.findMany({ orderBy: { name: "asc" } });
 

@@ -7,6 +7,7 @@ import { fmtUSD, fmtOdds, americanToDec } from "@/lib/fmt";
 import { BookCell, StatusBadge, SportPill } from "@/components/ui/design";
 import { updateTradeStatus } from "./settle-actions";
 import { toast } from "sonner";
+import { STATUS, isSettled, isExcluded } from "@/lib/status";
 
 interface Props {
   trade: any;
@@ -42,15 +43,15 @@ export function TradeDetailClient({ trade, mistageTags = [] }: Props) {
   const checkKeys = Object.keys(checklist).filter((k) => k !== "id" && k !== "tradeId" && k !== "checklistComplete" && k !== "createdAt" && k !== "updatedAt");
   const checkPassed = checkKeys.filter((k) => Boolean(checklist[k])).length;
 
-  const isSettled = trade.status.startsWith("settled_") || ["voided", "mistake", "mistake_invalid", "cancelled"].includes(trade.status);
-  const canSettle = !isSettled && trade.status !== "cancelled";
+  const settled = isSettled(trade.status) || isExcluded(trade.status);
+  const canSettle = !settled && trade.status !== STATUS.cancelled;
 
   // Synthesise an audit trail from available data
   const audit = [
     { label: "Created", at: trade.tradeDate ? new Date(trade.tradeDate).toLocaleString() : "—", done: true },
-    { label: "Verified", at: (trade.status === "ready" || isSettled) ? "Yes" : "—", done: trade.status !== "draft" && trade.status !== "pending_result" },
-    { label: "Locked", at: (trade.status === "paper_traded" || isSettled) ? "Yes" : "—", done: trade.status === "paper_traded" || isSettled },
-    { label: "Settled", at: trade.result ? new Date(trade.result.settledAt || trade.tradeDate).toLocaleString() : "—", done: isSettled },
+    { label: "Verified", at: (trade.status === "ready" || settled) ? "Yes" : "—", done: trade.status !== "draft" && trade.status !== "pending_result" },
+    { label: "Locked", at: (trade.status === "paper_traded" || settled) ? "Yes" : "—", done: trade.status === "paper_traded" || settled },
+    { label: "Settled", at: trade.result ? new Date(trade.result.settledAt || trade.tradeDate).toLocaleString() : "—", done: settled },
   ];
 
   return (
@@ -260,7 +261,7 @@ export function TradeDetailClient({ trade, mistageTags = [] }: Props) {
           </div>
 
           {/* Quick actions */}
-          {!isSettled && (
+          {!settled && (
             <div className="card">
               <div className="card-head"><h3>Quick actions</h3></div>
               <div className="card-pad stack">

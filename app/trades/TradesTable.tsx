@@ -3,7 +3,8 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { ALL_STATUSES, STATUS_COLORS, SETTLED_STATUSES } from "@/lib/constants";
+import { ALL_STATUSES, STATUS_COLORS } from "@/lib/constants";
+import { isSettled } from "@/lib/status";
 
 export type TradeRow = {
   id: string;
@@ -212,7 +213,7 @@ export function TradesTable({ trades }: Props) {
             ) : (
               filtered.map((t) => {
                 const totalStake = t.stakeA + t.stakeB;
-                const isSettled = SETTLED_STATUSES.has(t.status);
+                const settled = isSettled(t.status);
                 return (
                   <tr key={t.id} className="hover:bg-slate-50">
                     <td className="py-2 px-3">
@@ -242,7 +243,7 @@ export function TradesTable({ trades }: Props) {
                       {t.expectedProfitRange ?? "—"}
                     </td>
                     <td className="py-2 px-3 font-mono text-xs whitespace-nowrap">
-                      {isSettled && t.actualPL != null ? (
+                      {settled && t.actualPL != null ? (
                         <span className={t.actualPL >= 0 ? "text-green-700" : "text-red-600"}>
                           {t.actualPL >= 0 ? "+" : ""}${t.actualPL.toFixed(2)}
                         </span>

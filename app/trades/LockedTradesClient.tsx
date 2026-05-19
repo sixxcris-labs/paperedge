@@ -7,29 +7,24 @@ import { toast } from "sonner";
 import { fmtUSD, fmtOdds } from "@/lib/fmt";
 import { BookCell, SportPill, StatusBadge } from "@/components/ui/design";
 import { removeTrade } from "./actions";
+import {
+  isSettled,
+  hasOpenExposure,
+  isFailedVerification,
+} from "@/lib/status";
 
 /** Statuses that are part of finalized history — not removable. */
-const PROTECTED_STATUSES = new Set([
-  "settled_win", "settled_loss", "settled_push_void",
-  "settled_won", "settled_lost", "settled_push", "settled_partial",
-]);
-
 const isRemovable = (status: string) =>
-  !PROTECTED_STATUSES.has(status) && status !== "replaced_removed";
-
-/** Maps any status into one of the ordered display sections. */
-const LOCKED_SET = new Set([
-  "locked_paper_trade", "locked_paper_trade_upgraded",
-  "paper_traded", "pending_result",
-]);
+  !isSettled(status) && status !== "replaced_removed";
 
 type SectionKey = "pending" | "locked" | "settled" | "notplaced" | "removed";
 
 function sectionOf(status: string): SectionKey {
   if (status === "replaced_removed") return "removed";
-  if (status.startsWith("settled_")) return "settled";
-  if (status.startsWith("not_placed")) return "notplaced";
-  if (LOCKED_SET.has(status)) return "locked";
+  if (isSettled(status)) return "settled";
+  if (isFailedVerification(status)) return "notplaced";
+  // LOCKED_OPEN ∪ PENDING_SETTLEMENT — both are real paper exposure.
+  if (hasOpenExposure(status)) return "locked";
   return "pending"; // pending_verification, draft, ready, verifying, unverified…
 }
 

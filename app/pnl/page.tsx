@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { fmtUSD, fmtPct } from "@/lib/fmt";
 import { KPI, BarChart } from "@/components/ui/design";
+import { STATUS, groupList } from "@/lib/status";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
 export const dynamic = "force-dynamic";
@@ -20,14 +21,14 @@ export default async function PnLPage() {
   const settled = await db.paperTrade.findMany({
     where: {
       userId: user.id,
-      status: { startsWith: "settled_" },
+      status: { in: groupList("settled") },
     },
     include: { legs: { include: { book: true } }, result: true },
     orderBy: { tradeDate: "desc" },
   });
 
   const also = await db.paperTrade.findMany({
-    where: { userId: user.id, status: { in: ["mistake_invalid", "mistake"] } },
+    where: { userId: user.id, status: { in: [STATUS.mistake_invalid, STATUS.mistake] } },
     include: { legs: { include: { book: true } }, result: true },
     orderBy: { tradeDate: "desc" },
   });

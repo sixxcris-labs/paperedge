@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { groupList } from "@/lib/status";
 import { SettlementClient } from "./SettlementClient";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
@@ -12,10 +13,10 @@ export default async function SettlementPage() {
       userId: user.id,
       status: {
         in: [
-          // manual-entry statuses
-          "pending_verification", "locked_paper_trade", "locked_paper_trade_upgraded",
-          // wizard statuses
-          "paper_traded", "pending_result", "locked", "needs", "verified", "ready",
+          ...groupList("candidate"),
+          ...groupList("ready_to_lock"),
+          ...groupList("locked_open"),
+          ...groupList("pending_settlement"),
         ],
       },
     },
