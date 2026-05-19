@@ -19,6 +19,7 @@ import {
   sumCandidateExposure,
   sumConservativeExpectedProfit,
   getRealizedRoiPct,
+  getLargestExposurePct,
 } from "@/lib/trade-metrics";
 import {
   buildBankrollSeries,
@@ -45,6 +46,36 @@ export default async function DashboardPage() {
     where: { userId: user.id },
     orderBy: { snapshotDate: "asc" },
   });
+
+  // Process-discipline + bankroll-mechanics queries. Kept separate from the
+  // main trades fetch so adding/removing a card doesn't reshape that include.
+  const last30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [tradesWithChecklist, overrides30, mistakes30, books] = await Promise.all([
+    db.paperTrade.findMany({
+      where: { userId: user.id },
+      select: {
+        status: true,
+        checklist: { select: { checklistComplete: true } },
+      },
+    }),
+    db.checklistOverride.count({
+      where: { createdAt: { gte: last30 }, trade: { userId: user.id } },
+    }),
+    db.tradeMistake.findMany({
+      where: { createdAt: { gte: last30 }, trade: { userId: user.id } },
+      select: { mistakeTag: { select: { name: true } } },
+    }),
+    db.book.findMany({
+      where: { userId: user.id },
+      select: {
+        role: true,
+        currentBalance: true,
+        rolloverRemaining: true,
+        available: true,
+      },
+    }),
+  ]);
 
   // Bucket trades by canonical group via predicates from lib/status.ts.
   const openTrades = trades.filter((t) => hasOpenExposure(t.status));
@@ -76,6 +107,53 @@ export default async function DashboardPage() {
   const winsCount = settledTrades.filter((t) => settledKind(t.status) === "win").length;
   const lossCount = settledTrades.filter((t) => settledKind(t.status) === "loss").length;
   const voidedCount = settledTrades.filter((t) => settledKind(t.status) === "push").length;
+
+  // ── Process Discipline ────────────────────────────────────────────────────
+  // Pass rate: trades that reached a terminal state (settled or post-lock)
+  // AND have a completed checklist, vs the same denominator. Drafts and
+  // candidates don't count -- they haven't reached the checklist gate yet.
+  const checklistEligible = tradesWithChecklist.filter(
+    (t) => isVisibleOnDashboard(t.status) && !hasCandidateExposure(t.status),
+  );
+  const checklistPassed = checklistEligible.filter(
+    (t) => t.checklist?.checklistComplete === true,
+  ).length;
+  const checklistPassPct =
+    checklistEligible.length > 0
+      ? (checklistPassed / checklistEligible.length) * 100
+      : 0;
+
+  // Top mistake tag in last 30 days.
+  const mistakeCounts = new Map<string, number>();
+  for (const m of mistakes30) {
+    const name = m.mistakeTag?.name;
+    if (!name) continue;
+    mistakeCounts.set(name, (mistakeCounts.get(name) ?? 0) + 1);
+  }
+  const topMistake = [...mistakeCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+
+  // ── Bankroll Mechanics ────────────────────────────────────────────────────
+  const rolloverBooks = books.filter(
+    (b) => b.available && (b.rolloverRemaining ?? 0) > 0,
+  );
+  const rolloverRemainingTotal = rolloverBooks.reduce(
+    (s, b) => s + (b.rolloverRemaining ?? 0),
+    0,
+  );
+
+  // Liquid bankroll = current bankroll minus locked open exposure minus
+  // balances sitting on rollover-restricted books. Conservative view: money
+  // the user can still move freely.
+  const rolloverBookBalance = rolloverBooks.reduce(
+    (s, b) => s + (b.currentBalance ?? 0),
+    0,
+  );
+  const liquidBankroll = Math.max(
+    0,
+    currentBankroll - lockedExposure - rolloverBookBalance,
+  );
+
+  const largestExposurePct = getLargestExposurePct(openTrades, currentBankroll);
 
   // Real, DB-backed chart data. When no BankrollSnapshot rows cover the
   // window, the series reconstructs from starting bankroll + cumulative
@@ -121,17 +199,115 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI strip — locked open vs candidate exposure are tracked separately
-          so a queue of unverified opportunities never inflates "at risk". */}
-      <div className="grid cols-4" style={{ marginBottom: 14 }}>
-        <KPI label="Paper Bankroll"      value={fmtUSD(currentBankroll)} delta={`${fmtPct(bankrollPct)} all-time`} up={bankrollPct >= 0} />
-        <KPI label="Total Capital Used"  value={fmtUSD(totalStaked)}     sub={`${openTrades.length + settledTrades.length} locked + settled`} />
-        <KPI label="Locked Open Exposure" value={fmtUSD(lockedExposure)} sub={`${openTrades.length} locked event${openTrades.length === 1 ? "" : "s"}`} warn={lockedExposure > 0} />
-        <KPI label="Expected Profit"     value={fmtUSD(expectedProfit, { sign: true })} sub="open trades only" up={expectedProfit > 0} />
-        <KPI label="Settled P/L"         value={fmtUSD(actualPL, { sign: true })} delta={`${fmtPct(roi)} ROI realized`} up={actualPL >= 0} down={actualPL < 0} />
-        <KPI label="Candidate Exposure"  value={fmtUSD(candidateExposure)} sub={`${candidateTrades.length} unverified`} />
-        <KPI label="Settled Trades"      value={settledTrades.length} sub={`${winsCount}W · ${lossCount}L · ${voidedCount}V`} />
-        <KPI label="Failed Verification" value={failedTrades.length} sub="never placed" />
+      {/* ─── Performance ─── */}
+      <h2 className="section-title">Performance</h2>
+      <div className="grid cols-3" style={{ marginBottom: 14 }}>
+        <KPI
+          label="Paper Bankroll"
+          value={fmtUSD(currentBankroll)}
+          delta={`${fmtPct(bankrollPct)} all-time`}
+          up={bankrollPct >= 0}
+        />
+        <KPI
+          label="Settled P/L"
+          value={fmtUSD(actualPL, { sign: true })}
+          delta={`${fmtPct(roi)} ROI realized`}
+          sub={`${winsCount}W · ${lossCount}L · ${voidedCount}V`}
+          up={actualPL >= 0}
+          down={actualPL < 0}
+        />
+        <KPI
+          label="Locked Open Exposure"
+          value={fmtUSD(lockedExposure)}
+          sub={`${openTrades.length} locked · ${fmtUSD(expectedProfit, { sign: true })} exp.`}
+          warn={lockedExposure > 0}
+        />
+      </div>
+
+      {/* ─── Process Discipline ─── */}
+      <h2 className="section-title">Process Discipline</h2>
+      <div className="grid cols-3" style={{ marginBottom: 14 }}>
+        <KPI
+          label="Checklist Pass Rate"
+          value={
+            checklistEligible.length > 0
+              ? `${checklistPassPct.toFixed(0)}%`
+              : "—"
+          }
+          sub={
+            checklistEligible.length > 0
+              ? `${checklistPassed} / ${checklistEligible.length} trades`
+              : "no eligible trades yet"
+          }
+          up={checklistPassPct >= 90}
+          warn={checklistEligible.length > 0 && checklistPassPct < 90}
+        />
+        <KPI
+          label="Overrides (30d)"
+          value={overrides30}
+          sub="checklist forced through"
+          warn={overrides30 > 0}
+        />
+        <KPI
+          label="Top Mistake Tag (30d)"
+          value={topMistake ? topMistake[0] : "—"}
+          sub={
+            topMistake
+              ? `${topMistake[1]}× in last 30 days`
+              : "no mistakes logged"
+          }
+          warn={!!topMistake}
+        />
+      </div>
+
+      {/* ─── Bankroll Mechanics ─── */}
+      <h2 className="section-title">Bankroll Mechanics</h2>
+      <div className="grid cols-3" style={{ marginBottom: 14 }}>
+        <KPI
+          label="Active Rollover Books"
+          value={rolloverBooks.length}
+          sub={`${fmtUSD(rolloverRemainingTotal)} remaining`}
+          warn={rolloverBooks.length > 0}
+        />
+        <KPI
+          label="Liquid Bankroll"
+          value={fmtUSD(liquidBankroll)}
+          sub={`after exposure + rollover hold`}
+        />
+        <KPI
+          label="Largest Single-Trade Exposure"
+          value={
+            openTrades.length > 0
+              ? `${largestExposurePct.toFixed(1)}%`
+              : "—"
+          }
+          sub={
+            openTrades.length > 0
+              ? "of current bankroll"
+              : "no open trades"
+          }
+          warn={largestExposurePct > 5}
+        />
+      </div>
+
+      {/* Candidates and verification failures sit below the three required
+          rows -- they describe the queue, not the locked book of business. */}
+      <div className="grid cols-3" style={{ marginBottom: 14 }}>
+        <KPI
+          label="Candidate Exposure"
+          value={fmtUSD(candidateExposure)}
+          sub={`${candidateTrades.length} unverified opportunity${candidateTrades.length === 1 ? "" : "s"}`}
+        />
+        <KPI
+          label="Failed Verification"
+          value={failedTrades.length}
+          sub="never placed"
+        />
+        <KPI
+          label="Total Capital Used"
+          value={fmtUSD(totalStaked)}
+          sub={`${openTrades.length + settledTrades.length} locked + settled`}
+        />
       </div>
 
       {/* Warning panel — stale trades */}
