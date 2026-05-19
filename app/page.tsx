@@ -1,90 +1,101 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { fmtUSD, fmtPct, fmtOdds, statusBadge, sportInfo } from "@/lib/fmt";
+import { fmtUSD, fmtPct, fmtOdds } from "@/lib/fmt";
 import { KPI, LineChart, GroupedBarChart, BookCell, SportPill, StatusBadge } from "@/components/ui/design";
 import { RefreshButton } from "@/components/RefreshButton";
+import {
+  hasCandidateExposure,
+  hasOpenExposure,
+  isFailedVerification,
+  isPendingSettlement,
+  isSettled,
+  isVisibleOnDashboard,
+  settledKind,
+} from "@/lib/status";
+import {
+  getConservativeExpectedProfit,
+  sumActualProfitLoss,
+  sumOpenExposure,
+  sumCandidateExposure,
+  sumConservativeExpectedProfit,
+  getRealizedRoiPct,
+} from "@/lib/trade-metrics";
+import {
+  buildBankrollSeries,
+  buildDailyExpectedVsActual,
+} from "@/lib/dashboard-series";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
 export const dynamic = "force-dynamic";
-
-// 30-day bankroll series (static sample — replace with DB data when ready)
-const BANKROLL_SERIES = (() => {
-  const deltas = [12, -8, 18, 22, -14, 6, 28, 11, -6, 19, 14, -22, 8, 31, 17, -3, 9, 25, 12, -11, 18, 7, 24, -9, 16, 14, 22, 11, 19, 28];
-  let v = 9500;
-  return deltas.map((d, i) => { v += d; return { d: i + 1, v: Math.round(v * 100) / 100 }; });
-})();
-
-const DAILY_EVA = [
-  { d: "May 05", expected: 24.10, actual: 28.40 },
-  { d: "May 06", expected: 31.20, actual: 22.80 },
-  { d: "May 07", expected: 18.40, actual: -12.20 },
-  { d: "May 08", expected: 27.60, actual: 31.10 },
-  { d: "May 09", expected: 35.40, actual: 40.80 },
-  { d: "May 10", expected: 22.90, actual: 17.60 },
-  { d: "May 11", expected: 26.80, actual: 28.40 },
-  { d: "May 12", expected: 31.00, actual: 19.20 },
-  { d: "May 13", expected: 28.40, actual: 33.10 },
-  { d: "May 14", expected: 24.60, actual: 0 },
-  { d: "May 15", expected: 28.00, actual: -15.45 },
-  { d: "May 16", expected: 26.80, actual: 130.20 },
-  { d: "May 17", expected: 35.40, actual: -22.06 },
-  { d: "May 18", expected: 44.40, actual: 0 },
-];
 
 export default async function DashboardPage() {
   const user = await db.user.findUniqueOrThrow({ where: { email: LOCAL_USER_EMAIL } });
   const settings = await db.userSettings.findUnique({ where: { userId: user.id } });
 
-  const trades = await db.paperTrade.findMany({
-    // Removed trades are excluded from every dashboard stat. revalidatePath("/")
-    // in removeTrade() means this re-runs immediately after a removal.
-    where: { userId: user.id, status: { not: "replaced_removed" } },
+  // Dashboard ignores draft/excluded rows globally; everything past this point
+  // is "trades the user cares about".
+  const allTrades = await db.paperTrade.findMany({
+    where: { userId: user.id },
     include: { legs: { include: { book: true } }, result: true },
     orderBy: { tradeDate: "desc" },
   });
+  const trades = allTrades.filter((t) => isVisibleOnDashboard(t.status));
 
-  const PENDING_STATUSES = new Set([
-    // manual-entry
-    "pending_verification", "locked_paper_trade", "locked_paper_trade_upgraded",
-    // wizard
-    "paper_traded", "pending_result", "locked", "needs", "verified", "ready",
-    "unverified", "verifying",
-  ]);
-  const NEEDS_VERIFICATION_STATUSES = new Set([
-    "pending_verification", "pending_result", "needs", "unverified",
-  ]);
-  const SETTLED_STATUSES = new Set([
-    "settled_win", "settled_loss", "settled_push_void",
-    "settled_won", "settled_lost", "settled_push", "settled_partial",
-    "voided", "mistake", "mistake_invalid",
-  ]);
+  const snapshots = await db.bankrollSnapshot.findMany({
+    where: { userId: user.id },
+    orderBy: { snapshotDate: "asc" },
+  });
 
-  const pending = trades.filter((t) => PENDING_STATUSES.has(t.status));
-  const settled = trades.filter((t) => SETTLED_STATUSES.has(t.status));
-  const needsVerification = trades.filter((t) => NEEDS_VERIFICATION_STATUSES.has(t.status));
-  const mistakes = trades.filter((t) =>
-    t.status === "mistake" || t.status === "mistake_invalid"
+  // Bucket trades by canonical group via predicates from lib/status.ts.
+  const openTrades = trades.filter((t) => hasOpenExposure(t.status));
+  const candidateTrades = trades.filter((t) => hasCandidateExposure(t.status));
+  const settledTrades = trades.filter((t) => isSettled(t.status));
+  const needsVerification = trades.filter(
+    (t) => hasCandidateExposure(t.status) || isPendingSettlement(t.status),
   );
+  const failedTrades = trades.filter((t) => isFailedVerification(t.status));
 
-  const totalStaked = trades.reduce((s, t) => s + (t.totalStakeExposure ?? 0), 0);
-  const exposure = pending.reduce((s, t) => s + (t.totalStakeExposure ?? 0), 0);
-  // Use numeric expected fields; worstCasePL is the conservative figure for arb/promo.
-  // expectedProfitRange is a free-text string — never sum it.
-  const expectedProfit = pending.reduce(
-    (s, t) => s + (t.worstCasePL ?? t.expectedProfitIfA ?? 0),
-    0
-  );
-  const actualPL = settled.reduce((s, t) => s + (t.result?.actualProfitLoss ?? 0), 0);
-  const settledStaked = settled.reduce((s, t) => s + (t.totalStakeExposure ?? 0), 0);
-  const roi = settledStaked > 0 ? (actualPL / settledStaked) * 100 : 0;
+  // Metrics via lib/trade-metrics.ts — never compute exposure or expected
+  // profit inline in this component again.
+  const lockedExposure = sumOpenExposure(openTrades);
+  const candidateExposure = sumCandidateExposure(candidateTrades);
+  const expectedProfit = sumConservativeExpectedProfit(openTrades);
+  const actualPL = sumActualProfitLoss(settledTrades);
+  const roi = getRealizedRoiPct(settledTrades);
+
+  // Capital ever deployed (settled + currently open). Excludes candidates and
+  // failed verification, which never had real exposure.
+  const totalStaked =
+    sumOpenExposure(openTrades) +
+    settledTrades.reduce((s, t) => s + (t.totalStakeExposure ?? 0), 0);
 
   const startingBankroll = settings?.startingBankroll ?? 10000;
   const currentBankroll = settings?.currentBankroll ?? (startingBankroll + actualPL);
   const bankrollPct = startingBankroll > 0 ? ((currentBankroll - startingBankroll) / startingBankroll) * 100 : 0;
 
-  const winsCount = settled.filter((t) => (t.result?.actualProfitLoss ?? 0) > 0).length;
-  const lossCount = settled.filter((t) => (t.result?.actualProfitLoss ?? 0) < 0).length;
-  const voidedCount = settled.filter((t) => t.status === "voided").length;
+  const winsCount = settledTrades.filter((t) => settledKind(t.status) === "win").length;
+  const lossCount = settledTrades.filter((t) => settledKind(t.status) === "loss").length;
+  const voidedCount = settledTrades.filter((t) => settledKind(t.status) === "push").length;
+
+  // Real, DB-backed chart data. When no BankrollSnapshot rows cover the
+  // window, the series reconstructs from starting bankroll + cumulative
+  // realized P&L; see buildBankrollSeries for the fallback rules.
+  const bankrollSeries = buildBankrollSeries(
+    snapshots,
+    settledTrades,
+    startingBankroll,
+    30,
+  );
+  const dailyEvA = buildDailyExpectedVsActual(settledTrades, 14);
+
+  const bankrollWindowDelta =
+    bankrollSeries.length > 1
+      ? bankrollSeries[bankrollSeries.length - 1].v - bankrollSeries[0].v
+      : 0;
+  const hasSnapshotData = snapshots.some(
+    (s) => s.snapshotDate.getTime() >= Date.now() - 30 * 24 * 60 * 60 * 1000,
+  );
+  const hasSettledHistory = settledTrades.length > 0;
 
   // Today's trades (last 5)
   const today = new Date().toISOString().slice(0, 10);
@@ -110,16 +121,17 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI strip */}
+      {/* KPI strip — locked open vs candidate exposure are tracked separately
+          so a queue of unverified opportunities never inflates "at risk". */}
       <div className="grid cols-4" style={{ marginBottom: 14 }}>
-        <KPI label="Paper Bankroll"   value={fmtUSD(currentBankroll)} delta={`${fmtPct(bankrollPct)} all-time`} up={bankrollPct >= 0} />
-        <KPI label="Total Staked"     value={fmtUSD(totalStaked)}     sub={`${trades.length} trades`} />
-        <KPI label="Current Exposure" value={fmtUSD(exposure)}        sub={`${pending.length} pending events`} warn={exposure > 0} />
-        <KPI label="Expected Profit"  value={fmtUSD(expectedProfit, { sign: true })} up={expectedProfit > 0} />
-        <KPI label="Actual P/L"       value={fmtUSD(actualPL, { sign: true })} delta={`${fmtPct(roi)} ROI realized`} up={actualPL >= 0} down={actualPL < 0} />
-        <KPI label="Pending Trades"   value={pending.length} sub={`${needsVerification.length} need verification`} />
-        <KPI label="Settled Trades"   value={settled.length} sub={`${winsCount}W · ${lossCount}L · ${voidedCount}V`} />
-        <KPI label="ROI %"            value={`${roi.toFixed(2)}%`} delta="Target ≥ 1.5%" up={roi >= 1.5} down={roi < 0} />
+        <KPI label="Paper Bankroll"      value={fmtUSD(currentBankroll)} delta={`${fmtPct(bankrollPct)} all-time`} up={bankrollPct >= 0} />
+        <KPI label="Total Capital Used"  value={fmtUSD(totalStaked)}     sub={`${openTrades.length + settledTrades.length} locked + settled`} />
+        <KPI label="Locked Open Exposure" value={fmtUSD(lockedExposure)} sub={`${openTrades.length} locked event${openTrades.length === 1 ? "" : "s"}`} warn={lockedExposure > 0} />
+        <KPI label="Expected Profit"     value={fmtUSD(expectedProfit, { sign: true })} sub="open trades only" up={expectedProfit > 0} />
+        <KPI label="Settled P/L"         value={fmtUSD(actualPL, { sign: true })} delta={`${fmtPct(roi)} ROI realized`} up={actualPL >= 0} down={actualPL < 0} />
+        <KPI label="Candidate Exposure"  value={fmtUSD(candidateExposure)} sub={`${candidateTrades.length} unverified`} />
+        <KPI label="Settled Trades"      value={settledTrades.length} sub={`${winsCount}W · ${lossCount}L · ${voidedCount}V`} />
+        <KPI label="Failed Verification" value={failedTrades.length} sub="never placed" />
       </div>
 
       {/* Warning panel — stale trades */}
@@ -147,7 +159,7 @@ export default async function DashboardPage() {
                 </div>
                 <span className="hint">needs re-verification</span>
                 <span className="num pos" style={{ fontSize: 12.5 }}>
-                  {fmtUSD(t.worstCasePL ?? t.expectedProfitIfA ?? 0, { sign: true })} <span className="muted">exp.</span>
+                  {fmtUSD(getConservativeExpectedProfit(t), { sign: true })} <span className="muted">exp.</span>
                 </span>
                 <div style={{ textAlign: "right" }}>
                   <Link href="/settlement" className="btn sm">Review →</Link>
@@ -163,7 +175,13 @@ export default async function DashboardPage() {
         <div className="card">
           <div className="card-head">
             <h3>Paper Bankroll</h3>
-            <span className="sub">last 30 days · sample data</span>
+            <span className="sub">
+              last 30 days · {hasSnapshotData
+                ? "snapshots"
+                : hasSettledHistory
+                  ? "reconstructed from settled P/L"
+                  : "no history yet"}
+            </span>
             <div className="right">
               <div className="toggle">
                 <button>7D</button>
@@ -174,22 +192,32 @@ export default async function DashboardPage() {
             </div>
           </div>
           <div className="chart-wrap">
-            <LineChart data={BANKROLL_SERIES} color="#22C55E" />
+            <LineChart data={bankrollSeries} color="#22C55E" />
           </div>
           <div className="chart-legend">
             <span><i className="legend-sw" style={{ background: "#22C55E" }} />Bankroll</span>
-            <span className="dim">+$421.40 this period · 0 drawdown days &gt; 1%</span>
+            <span className="dim">
+              {fmtUSD(bankrollWindowDelta, { sign: true })} this period
+            </span>
           </div>
         </div>
 
         <div className="card">
           <div className="card-head">
             <h3>Daily Expected vs Actual</h3>
-            <span className="sub">last 14 days · sample data</span>
+            <span className="sub">
+              last 14 days · settled trades by settle date
+            </span>
             <div className="right"><span className="hint dim">$ profit</span></div>
           </div>
           <div className="chart-wrap">
-            <GroupedBarChart data={DAILY_EVA} />
+            {hasSettledHistory ? (
+              <GroupedBarChart data={dailyEvA} />
+            ) : (
+              <div style={{ padding: "40px 16px", color: "var(--fg-3)", textAlign: "center", fontSize: 13 }}>
+                No settled trades yet. Settle a trade to populate this chart.
+              </div>
+            )}
           </div>
           <div className="chart-legend">
             <span><i className="legend-sw" style={{ background: "#3B82F6", opacity: 0.6 }} />Expected</span>
@@ -253,7 +281,7 @@ export default async function DashboardPage() {
                       <td>{legB ? <BookCell name={legB.book.name} /> : <span className="dim">—</span>}</td>
                       <td className="num">{legB?.oddsAmerican != null ? fmtOdds(legB.oddsAmerican) : "—"}</td>
                       <td className="num">{legB ? fmtUSD(legB.stake) : "—"}</td>
-                      <td className="num pos">{fmtUSD(t.worstCasePL ?? t.expectedProfitIfA ?? 0, { sign: true })}</td>
+                      <td className="num pos">{fmtUSD(getConservativeExpectedProfit(t), { sign: true })}</td>
                       <td><StatusBadge status={t.status} /></td>
                       <td className="actions">
                         <Link href={`/trades/${t.id}`} className="btn ghost sm">Open →</Link>
