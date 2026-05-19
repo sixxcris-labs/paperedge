@@ -1,3 +1,5 @@
+> Archived build spec. Kept for history only. Current source of truth is `docs/active/`.
+
 # PaperEdge — Claude Code Kickoff
 
 Paste this entire message into Claude Code as your first prompt. Have the three handoff docs in the same directory.

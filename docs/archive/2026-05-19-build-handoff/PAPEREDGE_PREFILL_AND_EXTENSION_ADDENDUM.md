@@ -1,3 +1,5 @@
+> Archived build spec. Kept for history only. Current source of truth is `docs/active/`.
+
 # PaperEdge — Search Prefill + Browser Extension Addendum
 
 This addendum supplements `PAPEREDGE_BUILD_HANDOFF.md` and `PAPEREDGE_VERIFICATION_ADDENDUM.md`. It adds:

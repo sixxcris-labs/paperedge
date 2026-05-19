@@ -1,3 +1,5 @@
+> Archived build spec. Kept for history only. Current source of truth is `docs/active/`.
+
 # PaperEdge Build Plan
 
 > Drop this file into the repo root or `/docs/`. Claude Code and human contributors should read this before touching any feature work.

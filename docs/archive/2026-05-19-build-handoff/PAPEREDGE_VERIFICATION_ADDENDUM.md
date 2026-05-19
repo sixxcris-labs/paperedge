@@ -1,3 +1,5 @@
+> Archived build spec. Kept for history only. Current source of truth is `docs/active/`.
+
 # PaperEdge — Verification Layer Addendum
 
 This addendum supplements `PAPEREDGE_BUILD_HANDOFF.md`. It adds a verification workflow for the Texas-restricted book list: **Novig, Fliff, Sportzino, Kalshi, theScore**.

@@ -1,3 +1,5 @@
+> Archived build spec. Kept for history only. Current source of truth is `docs/active/`.
+
 # PaperEdge — Claude Code Build Handoff
 
 This document is the complete spec for building **PaperEdge**, a paper-trading journal for OddsFlex-style sports betting workflows. Follow the phases in order. Do not skip Phase 2 tests.
