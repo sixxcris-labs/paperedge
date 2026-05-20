@@ -3,13 +3,13 @@ import path from "node:path";
 import { defineConfig } from "prisma/config";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
-const dbPath = path.resolve(__dirname, "prisma/dev.db");
+const dbPath = path.resolve(__dirname, "packages/database/prisma/dev.db");
 const dbUrl = `file:${dbPath}`;
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  schema: "packages/database/prisma/schema.prisma",
   migrations: {
-    path: "prisma/migrations",
+    path: "packages/database/prisma/migrations",
   },
   datasource: {
     url: dbUrl,

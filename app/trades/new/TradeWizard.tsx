@@ -31,20 +31,20 @@ import {
   SPORTS,
   BOOK_ROLES,
   ROLE_BADGE_COLORS,
-} from "@/lib/constants";
+} from "@paperedge/core/constants";
 import {
   requiredCalculator,
   calculatorMismatchWarning,
-} from "@/lib/calculator-router";
-import type { BonusType, TradeType } from "@/lib/calculator-router";
-import { checklistFailures } from "@/lib/checklist";
+} from "@paperedge/core/calculator-router";
+import type { BonusType, TradeType } from "@paperedge/core/calculator-router";
+import { checklistFailures } from "@paperedge/core/checklist";
 import {
   cashArbHedge,
   promoHedge,
   lowHold,
   americanToDecimal,
-} from "@/lib/calc";
-import type { Book } from "@/lib/generated/prisma/client";
+} from "@paperedge/core/calc";
+import type { Book } from "@paperedge/database";
 import { createTrade } from "../actions";
 
 interface Props {

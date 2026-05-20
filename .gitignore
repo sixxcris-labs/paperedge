@@ -41,10 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/lib/generated/prisma
+/packages/database/src/generated/prisma
 
 # local SQLite data
-/prisma/dev.db
-/prisma/dev.db-*
+/packages/database/prisma/dev.db
+/packages/database/prisma/dev.db-*
 
 dist/

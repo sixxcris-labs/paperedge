@@ -3,8 +3,8 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { ALL_STATUSES, STATUS_COLORS } from "@/lib/constants";
-import { isSettled } from "@/lib/status";
+import { ALL_STATUSES, STATUS_COLORS } from "@paperedge/core/constants";
+import { isSettled } from "@paperedge/core/status";
 
 export type TradeRow = {
   id: string;

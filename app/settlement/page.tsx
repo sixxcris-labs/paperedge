@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
-import { groupList } from "@/lib/status";
+import { db } from "@paperedge/database";
+import { groupList } from "@paperedge/core/status";
 import { SettlementClient } from "./SettlementClient";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";

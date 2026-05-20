@@ -11,8 +11,8 @@
  * app's lock flow (Step 9 of the plan); the dashboard does not call this.
  */
 
-import type { PrismaClient } from "./generated/prisma/client";
-import { cashArbHedge, lowHold, middleHedge, promoHedge } from "./calc";
+import type { PrismaClient } from "@paperedge/database";
+import { cashArbHedge, lowHold, middleHedge, promoHedge } from "@paperedge/core/calc";
 
 export interface LockOpportunityResult {
   paperTradeId: string;

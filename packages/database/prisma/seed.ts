@@ -1,7 +1,7 @@
 import path from "node:path";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "../lib/generated/prisma/client";
-import { ACTIVE_BOOKS, ARCHIVED_DEFAULT_BOOK_NAMES } from "../lib/constants";
+import { ACTIVE_BOOKS, ARCHIVED_DEFAULT_BOOK_NAMES } from "@paperedge/core/constants";
+import { PrismaClient } from "../src/generated/prisma/client";
 
 const dbUrl = `file:${path.resolve(__dirname, "dev.db")}`;
 const db = new PrismaClient({

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
-import { fmtUSD, fmtOdds } from "@/lib/fmt";
+import { db } from "@paperedge/database";
+import { fmtUSD, fmtOdds } from "@paperedge/core/fmt";
 import { BookCell, SportPill, StatusBadge } from "@/components/ui/design";
 import { LockedTradesClient } from "./LockedTradesClient";
 

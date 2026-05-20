@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
-import { fmtUSD } from "@/lib/fmt";
+import { db } from "@paperedge/database";
+import { fmtUSD } from "@paperedge/core/fmt";
 import { KPI } from "@/components/ui/design";
-import { STATUS } from "@/lib/status";
+import { STATUS } from "@paperedge/core/status";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
 export const dynamic = "force-dynamic";

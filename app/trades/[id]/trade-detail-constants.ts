@@ -1,4 +1,4 @@
-export { TRADE_TYPES, GOALS, MARKET_TYPES, GAME_PERIODS, TRADE_STATUSES, ROLE_BADGE_COLORS, BOOK_ROLES } from "@/lib/constants";
+export { TRADE_TYPES, GOALS, MARKET_TYPES, GAME_PERIODS, TRADE_STATUSES, ROLE_BADGE_COLORS, BOOK_ROLES } from "@paperedge/core/constants";
 
 export const CHECKLIST_LABEL_MAP: Record<string, string> = {
   goalStated: "Goal is clearly stated",

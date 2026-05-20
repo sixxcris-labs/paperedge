@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { saveSettings } from "./actions";
-import { fmtUSD } from "@/lib/fmt";
+import { fmtUSD } from "@paperedge/core/fmt";
 
 interface Props {
   settings: {

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ACTIVE_BOOKS, BOOK_ROLES } from "@/lib/constants";
-import { fmtUSD } from "@/lib/fmt";
+import { ACTIVE_BOOKS, BOOK_ROLES } from "@paperedge/core/constants";
+import { fmtUSD } from "@paperedge/core/fmt";
 import { bookInfo } from "@/components/ui/design";
 import { createBook, updateBook, deleteBook } from "../actions";
 

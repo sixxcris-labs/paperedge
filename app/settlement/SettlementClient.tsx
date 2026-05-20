@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { fmtUSD, fmtOdds, americanToDec } from "@/lib/fmt";
+import { fmtUSD, fmtOdds, americanToDec } from "@paperedge/core/fmt";
 import { SportPill, StatusBadge, BookCell } from "@/components/ui/design";
 import { settleTrade } from "@/app/trades/[id]/settle-actions";
 import { toast } from "sonner";

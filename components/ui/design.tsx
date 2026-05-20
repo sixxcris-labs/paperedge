@@ -2,7 +2,7 @@
  * Lightweight design-system primitives — all pure HTML/CSS, no deps.
  * These map directly to the CSS classes in globals.css.
  */
-import { statusBadge, sportInfo } from "@/lib/fmt";
+import { statusBadge, sportInfo } from "@paperedge/core/fmt";
 
 /** Status badge */
 export function StatusBadge({ status }: { status: string }) {

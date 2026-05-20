@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "@/lib/db";
-import { STATUS, isSettled } from "@/lib/status";
+import { db } from "@paperedge/database";
+import { STATUS, isSettled } from "@paperedge/core/status";
+import { computeSnapshotPL } from "@paperedge/core/bankroll-snapshots";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
 
@@ -59,46 +60,77 @@ export async function settleTrade(tradeId: string, formData: FormData) {
     status = "settled_win";
   }
 
-  await db.result.upsert({
-    where: { tradeId },
-    update: {
-      winningSide,
-      finalStat:              data.finalStat ?? null,
-      actualPayout:           data.actualPayout,
-      actualProfitLoss:       data.actualProfitLoss,
-      matchedExpectedOutcome: data.matchedExpectedOutcome,
-      resultNotes:            data.resultNotes,
-      settledAt:              new Date(),
-    },
-    create: {
-      tradeId,
-      winningSide,
-      finalStat:              data.finalStat ?? null,
-      actualPayout:           data.actualPayout,
-      actualProfitLoss:       data.actualProfitLoss,
-      matchedExpectedOutcome: data.matchedExpectedOutcome,
-      resultNotes:            data.resultNotes,
-      settledAt:              new Date(),
-    },
-  });
+  const settledAt = new Date();
+  await db.$transaction(async (tx) => {
+    await tx.result.upsert({
+      where: { tradeId },
+      update: {
+        winningSide,
+        finalStat: data.finalStat ?? null,
+        actualPayout: data.actualPayout,
+        actualProfitLoss: data.actualProfitLoss,
+        matchedExpectedOutcome: data.matchedExpectedOutcome,
+        resultNotes: data.resultNotes,
+        settledAt,
+      },
+      create: {
+        tradeId,
+        winningSide,
+        finalStat: data.finalStat ?? null,
+        actualPayout: data.actualPayout,
+        actualProfitLoss: data.actualProfitLoss,
+        matchedExpectedOutcome: data.matchedExpectedOutcome,
+        resultNotes: data.resultNotes,
+        settledAt,
+      },
+    });
 
-  await db.paperTrade.update({
-    where: { id: tradeId },
-    data: { status },
-  });
+    await tx.paperTrade.update({
+      where: { id: tradeId },
+      data: { status },
+    });
 
-  // Update bankroll — only if this trade did not already have a settled result
-  // (i.e. this is the first settlement, not a re-settlement). Re-settling is
-  // blocked above, but if we ever relax that guard the bankroll won't double-count.
-  if (!trade.result?.settledAt) {
-    const settings = await db.userSettings.findUnique({ where: { userId: user.id } });
-    if (settings) {
-      await db.userSettings.update({
-        where: { userId: user.id },
-        data: { currentBankroll: settings.currentBankroll + data.actualProfitLoss },
-      });
-    }
-  }
+    // Re-settlement is blocked above; this guard keeps bankroll safe if that
+    // rule changes later.
+    if (trade.result?.settledAt) return;
+
+    const settings = await tx.userSettings.upsert({
+      where: { userId: user.id },
+      update: { currentBankroll: { increment: data.actualProfitLoss } },
+      create: {
+        userId: user.id,
+        currentBankroll: 1000 + data.actualProfitLoss,
+      },
+    });
+
+    const monthStart = new Date(settledAt);
+    monthStart.setDate(monthStart.getDate() - 29);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const recentSettled = await tx.result.findMany({
+      where: {
+        settledAt: { gte: monthStart, lte: settledAt },
+        trade: { userId: user.id },
+      },
+      select: {
+        settledAt: true,
+        actualProfitLoss: true,
+      },
+    });
+
+    const { dailyPL, weeklyPL, monthlyPL } = computeSnapshotPL(recentSettled, settledAt);
+
+    await tx.bankrollSnapshot.create({
+      data: {
+        userId: user.id,
+        snapshotDate: settledAt,
+        currentBankroll: settings.currentBankroll,
+        dailyPL,
+        weeklyPL,
+        monthlyPL,
+      },
+    });
+  });
 
   // Log mistakes
   if (data.mistakeTagIds.length > 0) {

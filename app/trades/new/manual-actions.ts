@@ -1,14 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
-import { cashArbHedge, cashPayout } from "@/lib/calc";
+import { db } from "@paperedge/database";
+import { cashArbHedge, cashPayout } from "@paperedge/core/calc";
 import {
   isSettlementBlock,
   parseSettlementBlock,
   settledStatusFor,
   type ParsedSettlement,
-} from "@/lib/import-settlement";
+} from "@paperedge/core/import-settlement";
 import type { ManualTradeInput } from "./manual-schema";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";

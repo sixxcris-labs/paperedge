@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createManualTrade } from "./manual-actions";
 import { ManualTradeSchema } from "./manual-schema";
-import { MANUAL_STATUSES } from "@/lib/constants";
-import type { Book } from "@/lib/generated/prisma/client";
+import { MANUAL_STATUSES } from "@paperedge/core/constants";
+import type { Book } from "@paperedge/database";
 
 interface Props {
   books: Book[];

@@ -8,12 +8,12 @@
  *
  * Idempotent: skips any trade whose customTradeId already exists.
  *
- * Run: npx tsx prisma/add-trades-2026-05-18.ts
+ * Run: npx tsx packages/database/prisma/add-trades-2026-05-18.ts
  */
 import path from "node:path";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "../lib/generated/prisma/client";
-import { cashArbHedge, cashPayout } from "../lib/calc";
+import { cashArbHedge, cashPayout } from "@paperedge/core/calc";
+import { PrismaClient } from "../src/generated/prisma/client";
 
 const dbUrl = `file:${path.resolve(__dirname, "dev.db")}`;
 const db = new PrismaClient({

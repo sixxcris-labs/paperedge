@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BOOK_ROLES } from "@/lib/constants";
-import type { Book } from "@/lib/generated/prisma/client";
+import { BOOK_ROLES } from "@paperedge/core/constants";
+import type { Book } from "@paperedge/database";
 import { createBook, updateBook } from "./actions";
 import { toast } from "sonner";
 

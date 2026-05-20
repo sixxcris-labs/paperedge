@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fmtUSD, fmtOdds, americanToDec } from "@/lib/fmt";
+import { fmtUSD, fmtOdds, americanToDec } from "@paperedge/core/fmt";
 import { toast } from "sonner";
 import { settleTrade } from "../settle-actions";
 

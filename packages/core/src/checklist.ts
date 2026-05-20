@@ -1,6 +1,18 @@
-import type { TradeChecklist } from "./generated/prisma/client";
+export interface TradeChecklistLike {
+  goalStated?: boolean | null;
+  bookRolesClassified?: boolean | null;
+  calculatorMatchesBonusType?: boolean | null;
+  sameEventConfirmed?: boolean | null;
+  sameMarketTypeConfirmed?: boolean | null;
+  sameGamePeriodConfirmed?: boolean | null;
+  oppositeSidesConfirmed?: boolean | null;
+  sameLineConfirmed?: boolean | null;
+  oddsWithinFreshnessWindow?: boolean | null;
+  maxBetWithinLimits?: boolean | null;
+  bankrollExposureReviewed?: boolean | null;
+}
 
-const REQUIRED_ITEMS: (keyof TradeChecklist)[] = [
+const REQUIRED_ITEMS: (keyof TradeChecklistLike)[] = [
   "goalStated",
   "bookRolesClassified",
   "calculatorMatchesBonusType",
@@ -14,11 +26,11 @@ const REQUIRED_ITEMS: (keyof TradeChecklist)[] = [
   "bankrollExposureReviewed",
 ];
 
-export function checklistFailures(c: Partial<TradeChecklist>): string[] {
+export function checklistFailures(c: Partial<TradeChecklistLike>): string[] {
   return REQUIRED_ITEMS.filter((k) => !c[k]) as string[];
 }
 
-export function checklistComplete(c: Partial<TradeChecklist>): boolean {
+export function checklistComplete(c: Partial<TradeChecklistLike>): boolean {
   return checklistFailures(c).length === 0;
 }
 

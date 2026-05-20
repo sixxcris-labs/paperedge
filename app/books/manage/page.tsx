@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db } from "@paperedge/database";
 import Link from "next/link";
 import { BooksManageClient } from "./BooksManageClient";
 

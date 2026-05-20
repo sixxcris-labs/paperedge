@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { fmtUSD, fmtOdds } from "@/lib/fmt";
+import { fmtUSD, fmtOdds } from "@paperedge/core/fmt";
 import { BookCell, SportPill, StatusBadge } from "@/components/ui/design";
 import { removeTrade } from "./actions";
 import {
   isSettled,
   hasOpenExposure,
   isFailedVerification,
-} from "@/lib/status";
+} from "@paperedge/core/status";
 
 /** Statuses that are part of finalized history — not removable. */
 const isRemovable = (status: string) =>

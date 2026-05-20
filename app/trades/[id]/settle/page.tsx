@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { db } from "@/lib/db";
-import { STATUS, isSettled } from "@/lib/status";
+import { db } from "@paperedge/database";
+import { STATUS, isSettled } from "@paperedge/core/status";
 import { SettleClient } from "./SettleClient";
 
 interface Props {

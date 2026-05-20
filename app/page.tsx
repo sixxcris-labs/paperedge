@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
-import { fmtUSD, fmtPct, fmtOdds } from "@/lib/fmt";
+import { db } from "@paperedge/database";
+import { fmtUSD, fmtPct, fmtOdds } from "@paperedge/core/fmt";
 import { KPI, LineChart, GroupedBarChart, BookCell, SportPill, StatusBadge } from "@/components/ui/design";
 import { RefreshButton } from "@/components/RefreshButton";
 import {
@@ -11,7 +11,7 @@ import {
   isSettled,
   isVisibleOnDashboard,
   settledKind,
-} from "@/lib/status";
+} from "@paperedge/core/status";
 import {
   getConservativeExpectedProfit,
   sumActualProfitLoss,
@@ -20,11 +20,11 @@ import {
   sumConservativeExpectedProfit,
   getRealizedRoiPct,
   getLargestExposurePct,
-} from "@/lib/trade-metrics";
+} from "@paperedge/core/trade-metrics";
 import {
   buildBankrollSeries,
   buildDailyExpectedVsActual,
-} from "@/lib/dashboard-series";
+} from "@paperedge/core/dashboard-series";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
 export const dynamic = "force-dynamic";

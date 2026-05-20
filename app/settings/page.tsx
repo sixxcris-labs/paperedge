@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db } from "@paperedge/database";
 import { SettingsClient } from "./SettingsClient";
 import Link from "next/link";
 

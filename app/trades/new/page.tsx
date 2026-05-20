@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db } from "@paperedge/database";
 import { TradeForm } from "./TradeForm";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";

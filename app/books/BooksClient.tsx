@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BookForm } from "./BookForm";
 import { deleteBook } from "./actions";
-import { BOOK_ROLES, ROLE_BADGE_COLORS } from "@/lib/constants";
-import type { Book } from "@/lib/generated/prisma/client";
+import { BOOK_ROLES, ROLE_BADGE_COLORS } from "@paperedge/core/constants";
+import type { Book } from "@paperedge/database";
 import { toast } from "sonner";
 
 interface Props {

@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db } from "@paperedge/database";
 
 interface TemplateVars {
   player?: string;

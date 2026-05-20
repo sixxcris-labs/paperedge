@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { fmtUSD, fmtOdds, americanToDec } from "@/lib/fmt";
+import { fmtUSD, fmtOdds, americanToDec } from "@paperedge/core/fmt";
 import { BookCell, StatusBadge, SportPill } from "@/components/ui/design";
 import { updateTradeStatus } from "./settle-actions";
 import { toast } from "sonner";
-import { STATUS, isSettled, isExcluded } from "@/lib/status";
+import { STATUS, isSettled, isExcluded } from "@paperedge/core/status";
 
 interface Props {
   trade: any;

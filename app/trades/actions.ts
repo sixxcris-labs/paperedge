@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "@/lib/db";
-import { cashArbHedge, promoHedge, lowHold } from "@/lib/calc";
-import { requiredCalculator } from "@/lib/calculator-router";
-import { checklistComplete, checklistFailures } from "@/lib/checklist";
-import type { BonusType, TradeType } from "@/lib/calculator-router";
+import { db } from "@paperedge/database";
+import { cashArbHedge, promoHedge, lowHold } from "@paperedge/core/calc";
+import { requiredCalculator } from "@paperedge/core/calculator-router";
+import { checklistComplete, checklistFailures } from "@paperedge/core/checklist";
+import type { BonusType, TradeType } from "@paperedge/core/calculator-router";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
 

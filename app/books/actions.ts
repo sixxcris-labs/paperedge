@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
+import { db } from "@paperedge/database";
 import { parseBookFormData } from "@/lib/book-form";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";

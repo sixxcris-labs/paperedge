@@ -1,7 +1,7 @@
-import { db } from "@/lib/db";
-import { fmtUSD, fmtPct } from "@/lib/fmt";
+import { db } from "@paperedge/database";
+import { fmtUSD, fmtPct } from "@paperedge/core/fmt";
 import { KPI, BarChart } from "@/components/ui/design";
-import { STATUS, groupList } from "@/lib/status";
+import { STATUS, groupList } from "@paperedge/core/status";
 
 const LOCAL_USER_EMAIL = "local@paperedge.app";
 export const dynamic = "force-dynamic";
